@@ -9,7 +9,7 @@ use anyhow::Context;
 use app::AppState;
 use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyModifiers};
 use futures::StreamExt;
-use input::{AppCommand, map_key_event};
+use input::{AppCommand, is_quit_hotkey, map_key_event};
 use telegram::{AuthFlow, AuthStatus, TelegramEvent, TelegramRequest, spawn_telegram_task};
 use tokio::{sync::mpsc, time::interval};
 use tracing::error;
@@ -288,7 +288,7 @@ fn handle_auth_key(key: KeyEvent, input: &mut String) -> AuthKeyAction {
             input.pop();
             AuthKeyAction::None
         }
-        KeyCode::Char('q') => AuthKeyAction::Quit,
+        KeyCode::Char(_) if is_quit_hotkey(key) => AuthKeyAction::Quit,
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => AuthKeyAction::Quit,
         KeyCode::Esc => AuthKeyAction::Quit,
         KeyCode::Char(ch) => {
@@ -339,5 +339,29 @@ async fn request_send_message(req_tx: &mpsc::Sender<TelegramRequest>, app: &mut 
     {
         app.last_error = Some(format!("failed to request message send: {err}"));
         app.is_sending_message = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    #[test]
+    fn auth_quit_hotkey_supports_russian_alias() {
+        let key = KeyEvent::new(KeyCode::Char('й'), KeyModifiers::NONE);
+        let action = handle_auth_key(key, &mut String::new());
+
+        assert!(matches!(action, AuthKeyAction::Quit));
+    }
+
+    #[test]
+    fn auth_regular_chars_are_still_inserted() {
+        let mut input = String::new();
+        let key = KeyEvent::new(KeyCode::Char('ф'), KeyModifiers::NONE);
+        let action = handle_auth_key(key, &mut input);
+
+        assert!(matches!(action, AuthKeyAction::None));
+        assert_eq!(input, "ф");
     }
 }

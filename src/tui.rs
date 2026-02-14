@@ -240,19 +240,19 @@ fn focus_style(app: &AppState, area: FocusArea) -> Style {
 fn hotkeys_text(app: &AppState) -> &'static str {
     match app.ui_mode {
         UiMode::Compose => {
-            "Type message | Enter send | Esc stop compose | Tab/Shift+Tab focus | q quit"
+            "Type message | Enter send | Esc stop compose | Tab/Shift+Tab focus | q/й quit"
         }
         UiMode::Search => {
-            "Search chats | Type to filter | Backspace edit | Esc clear/exit | Up/Down select | q quit"
+            "Search chats | Type to filter | Backspace edit | Esc clear/exit | Up/Down select | q/й quit"
         }
         UiMode::Normal => match app.focus {
             FocusArea::Chats => {
-                "Tab/Shift+Tab focus | Up/Down select chat | i compose | / search | s sort | q quit"
+                "Tab/Shift+Tab focus | Up/Down select chat | i/ш compose | / or . search | s/ы sort | q/й quit"
             }
             FocusArea::Messages => {
-                "Tab/Shift+Tab focus | Up/Down scroll messages | i compose | / search | q quit"
+                "Tab/Shift+Tab focus | Up/Down scroll messages | i/ш compose | / or . search | q/й quit"
             }
-            FocusArea::Input => "Tab/Shift+Tab focus | i compose | / search | q quit",
+            FocusArea::Input => "Tab/Shift+Tab focus | i/ш compose | / or . search | q/й quit",
         },
     }
 }
@@ -367,7 +367,7 @@ pub fn draw_auth(frame: &mut Frame<'_>, view: &AuthView<'_>) {
         rendered_input,
         String::new(),
         "Press Enter to continue".to_string(),
-        "Press q to quit".to_string(),
+        "Press q/й to quit".to_string(),
     ];
 
     if let Some(hint) = view.hint {

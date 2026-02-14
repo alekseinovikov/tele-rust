@@ -21,6 +21,34 @@ pub enum AppCommand {
     None,
 }
 
+const QUIT_HOTKEYS: &[char] = &['q', 'й'];
+const COMPOSE_HOTKEYS: &[char] = &['i', 'ш'];
+const SORT_HOTKEYS: &[char] = &['s', 'ы'];
+const SEARCH_HOTKEYS: &[char] = &['/', '.'];
+
+pub fn is_quit_hotkey(key: KeyEvent) -> bool {
+    is_hotkey_char(key, QUIT_HOTKEYS)
+}
+
+fn is_compose_hotkey(key: KeyEvent) -> bool {
+    is_hotkey_char(key, COMPOSE_HOTKEYS)
+}
+
+fn is_sort_hotkey(key: KeyEvent) -> bool {
+    is_hotkey_char(key, SORT_HOTKEYS)
+}
+
+fn is_search_hotkey(key: KeyEvent) -> bool {
+    is_hotkey_char(key, SEARCH_HOTKEYS)
+}
+
+fn is_hotkey_char(key: KeyEvent, hotkeys: &[char]) -> bool {
+    match key.code {
+        KeyCode::Char(ch) => hotkeys.contains(&ch.to_ascii_lowercase()),
+        _ => false,
+    }
+}
+
 pub fn map_key_event(key: KeyEvent, ui_mode: UiMode, focus: FocusArea) -> AppCommand {
     if key.kind != KeyEventKind::Press {
         return AppCommand::None;
@@ -51,12 +79,18 @@ pub fn map_key_event(key: KeyEvent, ui_mode: UiMode, focus: FocusArea) -> AppCom
         }
         KeyCode::Backspace => AppCommand::Backspace,
         KeyCode::Esc => AppCommand::ExitComposeOrSearch,
-        KeyCode::Char('/') if ui_mode != UiMode::Compose => AppCommand::StartSearch,
-        KeyCode::Char('s') if focus == FocusArea::Chats && ui_mode != UiMode::Compose => {
+        KeyCode::Char(_) if is_search_hotkey(key) && ui_mode != UiMode::Compose => {
+            AppCommand::StartSearch
+        }
+        KeyCode::Char(_)
+            if is_sort_hotkey(key) && focus == FocusArea::Chats && ui_mode != UiMode::Compose =>
+        {
             AppCommand::ToggleSortMode
         }
-        KeyCode::Char('i') if ui_mode != UiMode::Search => AppCommand::EnterCompose,
-        KeyCode::Char('q') => AppCommand::Quit,
+        KeyCode::Char(_) if is_compose_hotkey(key) && ui_mode != UiMode::Search => {
+            AppCommand::EnterCompose
+        }
+        KeyCode::Char(_) if is_quit_hotkey(key) && ui_mode == UiMode::Normal => AppCommand::Quit,
         KeyCode::Char(ch) => AppCommand::InsertChar(ch),
         _ => AppCommand::None,
     }
@@ -99,6 +133,54 @@ mod tests {
         assert_eq!(
             map_key_event(enter, UiMode::Compose, FocusArea::Input),
             AppCommand::SubmitMessage
+        );
+    }
+
+    #[test]
+    fn russian_layout_hotkeys_are_supported() {
+        let quit = KeyEvent::new(KeyCode::Char('й'), KeyModifiers::NONE);
+        let compose = KeyEvent::new(KeyCode::Char('ш'), KeyModifiers::NONE);
+        let sort = KeyEvent::new(KeyCode::Char('ы'), KeyModifiers::NONE);
+        let search = KeyEvent::new(KeyCode::Char('.'), KeyModifiers::NONE);
+
+        assert_eq!(
+            map_key_event(quit, UiMode::Normal, FocusArea::Chats),
+            AppCommand::Quit
+        );
+        assert_eq!(
+            map_key_event(compose, UiMode::Normal, FocusArea::Chats),
+            AppCommand::EnterCompose
+        );
+        assert_eq!(
+            map_key_event(sort, UiMode::Normal, FocusArea::Chats),
+            AppCommand::ToggleSortMode
+        );
+        assert_eq!(
+            map_key_event(search, UiMode::Normal, FocusArea::Chats),
+            AppCommand::StartSearch
+        );
+    }
+
+    #[test]
+    fn quit_hotkeys_are_text_in_compose_and_search_modes() {
+        let quit_en = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
+        let quit_ru = KeyEvent::new(KeyCode::Char('й'), KeyModifiers::NONE);
+
+        assert_eq!(
+            map_key_event(quit_en, UiMode::Compose, FocusArea::Input),
+            AppCommand::InsertChar('q')
+        );
+        assert_eq!(
+            map_key_event(quit_ru, UiMode::Compose, FocusArea::Input),
+            AppCommand::InsertChar('й')
+        );
+        assert_eq!(
+            map_key_event(quit_en, UiMode::Search, FocusArea::Chats),
+            AppCommand::InsertChar('q')
+        );
+        assert_eq!(
+            map_key_event(quit_ru, UiMode::Search, FocusArea::Chats),
+            AppCommand::InsertChar('й')
         );
     }
 }
